@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8"> 
+        <meta name="viewport" content="width=device-width">
+        <title>EventGridMonitor</title>
+        <link rel="stylesheet" href="https://cdn.bootcss.com/bootstrap/3.3.0/css/bootstrap.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css">
+        <script>hljs.initHighlightingOnLoad();</script>
+    </head>
+    <body>
+        <div>
+            <div id="form">
+                <p>connectionstring:</p>
+                <input v-model="connectionstring">
+                <p>queue</p>
+                <input v-model="queue">
+                <button v-on:click="start">start</button>
+                <button v-on:click="stop">stop</button>
+            </div>
+            <div id="events">
+                <ol>
+                    <event-item
+                        v-for="item in eventList"
+                        v-bind:event="item"
+                        v-bind:key="item.id">
+                    </event-item>
+                </ol>
+            </div>
+        </div>
+        <script src="/static/js/azure-storage.queue.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+        <script>
+            var form = new Vue({
+                el: '#form',
+                data: {
+                    connectionstring: 'connectionstring',
+                    queue: 'queue'
+                },
+                methods: {
+                    start: function() {startEventListener();},
+                    stop: function() {stopEventListener();}
+                }
+            })
+
+
+            Vue.component('event-item', {
+                props: ['event'],
+                template: '<li><pre><code class="hljs json">{{ event }}</code></pre></li>'
+            })
+
+            var events = new Vue({
+                el: '#events',
+                data: {
+                    eventList: [ ]
+                }
+            })
+
+            var currentBackoff = 0;
+            var maximumBackoff = 10;
+            var stopListening = false;
+            var queueService;
+            var encoder = new AzureStorage.Queue.QueueMessageEncoder.TextBase64QueueMessageEncoder();
+            var timer;
+
+            function startEventListener() {
+                queueService = AzureStorage.Queue.createQueueService(form.connectionstring);
+                getEvents();
+            }
+
+            function stopEventListener() {
+                stopListening = true;
+            }
+
+            function getEvents() {
+                if (stopListening != true) {
+                    queueService.getMessages(form.queue, {numOfMessages:32},function(error, messages, response) {
+                        if(!error){
+                            if (messages.length>0) {
+                                // Reset backoff
+                                currentBackoff = 0;
+
+                                for (message in messages) {
+                                    events.eventList.push(JSON.parse(messages[message].messageText));
+                                    queueService.deleteMessage(form.queue, messages[message].messageId, messages[message].popReceipt, function(error, response) {
+                                        if (!error) {
+                                            //message deleted
+                                        }
+                                    });
+                                }
+                            } else {
+                                if (currentBackoff < maximumBackoff)
+                                {
+                                    currentBackoff++;
+                                }
+                            }
+                            timer = setTimeout(getEvents,currentBackoff*1000);
+                        }
+                    });
+                    stopListening = false;
+                }
+            }
+        </script>
+    </body> 
+</html>

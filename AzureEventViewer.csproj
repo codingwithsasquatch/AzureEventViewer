@@ -5,6 +5,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Azure.EventGrid" Version="1.1.0-preview" />
     <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="1.0.13" />
+    <PackageReference Include="MimeTypesMap" Version="1.0.3" />
     <PackageReference Include="Polly" Version="5.9.0" />
     <PackageReference Include="WindowsAzure.Storage" Version="8.7.0" />
   </ItemGroup>
@@ -18,7 +19,7 @@
     <None Update="proxies.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="www/*">
+    <None Update="www/**">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>    
     <None Update="local.settings.json">

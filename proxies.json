@@ -6,7 +6,15 @@
         "methods": [ "GET" ],
         "route": "/"
       },
-      "backendUri": "https://localhost/index.html"
+      "backendUri": "https://localhost/StaticFileServer?file=index.html"
+    },
+
+    "static": {
+      "matchCondition": {
+        "methods": [ "GET" ],
+        "route": "/static/{*path}"
+      },
+      "backendUri": "http://localhost/StaticFileServer?file=static/{path}"
     }
   }
 }

@@ -36,14 +36,22 @@ namespace AzureEventViewer
             }
 
             log.Info(requestContent);
-            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(Environment.GetEnvironmentVariable("AzureWebJobsStorage"));
-            CloudQueueClient queueClient = storageAccount.CreateCloudQueueClient();
-            CloudQueue queue = queueClient.GetQueueReference("EventQueue");
-            queue.CreateIfNotExists();
-            CloudQueueMessage message = new CloudQueueMessage(requestContent);
-            await queue.AddMessageAsync(message);
+            try
+            {
+                CloudStorageAccount storageAccount = CloudStorageAccount.Parse(Environment.GetEnvironmentVariable("AzureWebJobsStorage"));
+                CloudQueueClient queueClient = storageAccount.CreateCloudQueueClient();
+                CloudQueue queue = queueClient.GetQueueReference("eventqueue");
+                await queue.CreateIfNotExistsAsync();
+                CloudQueueMessage message = new CloudQueueMessage(requestContent);
+                await queue.AddMessageAsync(message);
+            }
+            catch (Exception e)
+            {
+                log.Info(e.ToString());
+                return req.CreateErrorResponse(HttpStatusCode.InternalServerError, "error with storage queue");
+            }
 
-            return req.CreateResponse(HttpStatusCode.OK, requestContent);
+                return req.CreateResponse(HttpStatusCode.OK, requestContent);
         }
     }
 }
