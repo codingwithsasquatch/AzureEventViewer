@@ -17,7 +17,10 @@ namespace AzureEventViewer
     public static class AzureEventViewer
     {
         [FunctionName("AzureEventViewer")]
-        public static async Task<HttpResponseMessage> Run([HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)]HttpRequestMessage req, TraceWriter log)
+        public static async Task<HttpResponseMessage> Run(
+            [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)]HttpRequestMessage req,
+            [Queue("eventQueue", Connection = "AzureWebJobsStorage")] IAsyncCollector<string> outputQueue,
+            TraceWriter log)
         {
             var requestContent = await req.Content.ReadAsStringAsync();
 
@@ -43,17 +46,11 @@ namespace AzureEventViewer
             }
             else if (eventTypeHeaderValue == "Notification")
             {
-                // Write the event to a storage queue if the event type is
-                // an event notification.
+                // Write the event to a storage queue
                 log.Info(requestContent);
                 try
                 {
-                    var storageAccount = CloudStorageAccount.Parse(Environment.GetEnvironmentVariable("AzureWebJobsStorage"));
-                    var queueClient = storageAccount.CreateCloudQueueClient();
-                    var queue = queueClient.GetQueueReference("eventqueue");
-                    await queue.CreateIfNotExistsAsync();
-                    var message = new CloudQueueMessage(requestContent);
-                    await queue.AddMessageAsync(message);
+                    await outputQueue.AddAsync(requestContent);
                 }
                 catch (Exception e)
                 {
