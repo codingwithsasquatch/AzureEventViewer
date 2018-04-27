@@ -1,0 +1,174 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "serviceName": {
+            "type": "string",
+            "defaultValue": "ArmGrid",
+            "metadata": {
+                "description": "The name of the function app that you wish to create."
+            }
+        },
+        "storageAccountType": {
+            "defaultValue": "Standard_LRS",
+            "allowedValues": [
+                "Standard_LRS",
+                "Standard_GRS",
+                "Standard_ZRS"
+            ],
+            "type": "string",
+            "metadata": {
+                "description": "Storage Account type"
+            }
+        },
+        "sourceCodeRepositoryURL": {
+            "defaultValue": "https://github.com/codingwithsasquatch/ArmGrid.git",
+            "type": "string",
+            "metadata": {
+                "description": "this is the github repo that will be used to for the function's code"
+            }
+        },
+        "sourceCodeBranch": {
+            "defaultValue": "master",
+            "type": "string",
+            "metadata": {
+                "description": "branch to use for function source"
+            }
+        },
+        "sourceCodeManualIntegration": {
+            "defaultValue": true,
+            "allowedValues": [
+                true,
+                false
+            ],
+            "type": "bool"
+        }
+    },
+    "variables": {
+        "functionAppName": "[parameters('serviceName')]",
+        "appServicePlanName": "[parameters('serviceName')]",
+        "hostingPlanName": "[parameters('serviceName')]",
+        "storageAccountName": "[concat(parameters('serviceName'), 'storage')]",
+        "eventGridName": "[concat(parameters('serviceName'), 'CustomEventGrid')]",
+        "eventGridSubscriptionName": "[concat(parameters('serviceName'), 'ArmEventGridSub')]"
+    },
+    "resources": [{
+            "type": "Microsoft.Storage/storageAccounts",
+            "sku": {
+                "name": "[parameters('storageAccountType')]"
+            },
+            "kind": "Storage",
+            "name": "[variables('storageAccountName')]",
+            "apiVersion": "[providers('Microsoft.Storage','storageAccounts').apiVersions[0]]",
+            "location": "[resourceGroup().location]"
+        },
+        {
+            "type": "Microsoft.Web/serverfarms",
+            "sku": {
+                "name": "Y1",
+                "tier": "Dynamic",
+                "size": "Y1",
+                "family": "Y",
+                "capacity": 0
+            },
+            "name": "[variables('hostingPlanName')]",
+            "apiVersion": "[providers('Microsoft.Web', 'serverfarms').apiVersions[0]]",
+            "location": "[resourceGroup().location]",
+            "properties": {
+                "name": "[variables('hostingPlanName')]"
+            }
+        },
+        {
+            "type": "Microsoft.Web/sites",
+            "kind": "functionapp",
+            "name": "[variables('functionAppName')]",
+            "apiVersion": "[providers('Microsoft.Web', 'sites').apiVersions[0]]",
+            "location": "[resourceGroup().location]",
+            "identity": {
+                "type": "SystemAssigned"
+            },
+            "properties": {
+                "serverFarmId": "[variables('appServicePlanName')]",
+                "siteConfig": {
+                    "appSettings": [{
+                            "name": "FUNCTIONS_EXTENSION_VERSION",
+                            "value": "beta"
+                        },
+                        {
+                            "name": "AzureWebJobsDashboard",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccountName'), ';AccountKey=', listKeys(variables('storageAccountName'), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value)]"
+                        },
+                        {
+                            "name": "AzureWebJobsStorage",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccountName'), ';AccountKey=', listKeys(variables('storageAccountName'), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value)]"
+                        },
+                        {
+                            "name": "EventGridCustomTopicEndpoint",
+                            "value": "[reference(variables('eventGridName')).endpoint]"
+                        },
+                        {
+                            "name": "storageAccountName",
+                            "value": "[variables('storageAccountName')]"
+                        }
+                    ]
+                }
+            },
+            "resources": [{
+                    "type": "sourcecontrols",
+                    "name": "web",
+                    "apiVersion": "2015-08-01",
+                    "properties": {
+                        "RepoUrl": "[parameters('sourceCodeRepositoryURL')]",
+                        "branch": "[parameters('sourceCodeBranch')]",
+                        "IsManualIntegration": "[parameters('sourceCodeManualIntegration')]"
+                    },
+                    "dependsOn": [
+                        "[resourceId('Microsoft.Web/sites/', variables('functionAppName'))]"
+                    ]
+                }
+            ],
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+                "[resourceId('Microsoft.Web/serverfarms', parameters('serviceName'))]",
+                "[resourceId('Microsoft.EventGrid/topics', variables('eventGridName'))]"
+            ]
+        },
+        {
+            "apiVersion": "[providers('Microsoft.EventGrid', 'topics').apiVersions[0]]",
+            "name": "[variables('eventGridName')]",
+            "type": "Microsoft.EventGrid/topics",
+            "location": "[resourceGroup().location]",
+            "properties": {
+                "name": "[variables('eventGridName')]"
+            }
+        },
+        {
+            "type": "Microsoft.EventGrid/eventSubscriptions",
+            "name": "[variables('eventGridSubscriptionName')]",
+            "apiVersion": "[providers('Microsoft.EventGrid', 'topics').apiVersions[0]]",
+            "properties": {
+                "destination": {
+                    "endpointType": "WebHook",
+                    "properties": {
+                        "endpointUrl": "[concat('https://',reference(resourceId('Microsoft.Web/sites/', variables('functionAppName'))).hostNames[0],'/api/ArmEventTrigger')]"
+                    }
+                },
+                "filter": {
+                    "subjectBeginsWith": "",
+                    "subjectEndsWith": "",
+                    "isSubjectCaseSensitive": false,
+                    "includedEventTypes": ["All"]
+                }
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/sites/sourcecontrols', variables('functionAppName'), 'web')]"
+            ]
+        }
+    ],
+    "outputs": {
+        "eventGridUrl": {
+            "type": "string",
+            "value": "[concat(reference(resourceId('Microsoft.Web/sites/', variables('functionAppName'))).hostNames[0],'/api/ArmEventTrigger')]"
+        }
+    }
+}
