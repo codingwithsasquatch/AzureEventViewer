@@ -82,7 +82,7 @@
                                 currentBackoff = 0;
 
                                 for (message in messages) {
-                                    events.eventList.push(JSON.parse(messages[message].messageText));
+                                    events.eventList.push(messages[message].messageText);
                                     queueService.deleteMessage(form.queue, messages[message].messageId, messages[message].popReceipt, function(error, response) {
                                         if (!error) {
                                             //message deleted
