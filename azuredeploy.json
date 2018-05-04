@@ -22,7 +22,7 @@
             }
         },
         "sourceCodeRepositoryURL": {
-            "defaultValue": "https://github.com/codingwithsasquatch/ArmGrid.git",
+            "defaultValue": "https://github.com/codingwithsasquatch/AzureEventViewer.git",
             "type": "string",
             "metadata": {
                 "description": "this is the github repo that will be used to for the function's code"

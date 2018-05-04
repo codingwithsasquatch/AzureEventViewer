@@ -1,1 +1,187 @@
-<!DOCTYPE html><html><head><meta charset=utf-8><link rel=apple-touch-icon sizes=76x76 href=assets/img/apple-icon.png><link rel=icon type=image/png sizes=96x96 href=static/img/favicon.png><meta http-equiv=X-UA-Compatible content="IE=edge,chrome=1"><title>Light Bootstrap Dashboard Vue</title><meta name=viewport content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=0"><link href=https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css rel=stylesheet><link href="https://fonts.googleapis.com/css?family=Roboto:400,700,300" rel=stylesheet type=text/css><link href=static/css/nucleo-icons.css rel=stylesheet><link href=static/css/app.2308dd27695148689c0be6cbfddf14a0.css rel=stylesheet></head><body><div id=app></div><script type=text/javascript src=static/js/manifest.4608089d69e37aa45ad0.js></script><script type=text/javascript src=static/js/vendor.cd2ae5395d553dc6ae99.js></script><script type=text/javascript src=static/js/app.408a23814d308e24081a.js></script></body></html>
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+        <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+
+        <title>EventGridMonitor</title>
+
+        <link type="text/css" rel="stylesheet" href="//unpkg.com/bootstrap/dist/css/bootstrap.min.css"/>
+        <link type="text/css" rel="stylesheet" href="//unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.css"/>
+        
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css">
+        <script>hljs.initHighlightingOnLoad();</script>
+        
+        <!-- development version, includes helpful console warnings -->
+        <!--<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>-->
+        <script src="https://unpkg.com/vue"></script>
+        <script src="/static/js/azure-storage.queue.min.js"></script>
+        <script src="https://unpkg.com/babel-polyfill@latest/dist/polyfill.min.js"></script>
+        <script src="https://unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.js"></script>
+    </head>
+    <body>
+        <div id="app">
+            <b-container>
+                <b-jumbotron header="Azure Event Viewer" leader="">
+                    <p>some sort of info printed here</p>
+                    <b-form-group
+                        id="fieldset1"
+                        description="Connection String"
+                        label="Enter your connection string"
+                        label-for="connectionstring"
+                    >
+                        <b-form-input id="connectionstring" v-model="connectionstring"></b-form-input>
+                    </b-form-group>
+                    <b-form-group
+                        id="fieldset2"
+                        description="Queue Name"
+                        label="Enter your queue name"
+                        label-for="queue"
+                    >
+                    <b-form-input id="queue" v-model="queue"></b-form-input>
+                </b-form-group>
+                    <b-button variant="primary"v-on:click="start">Start</b-button>
+                    <b-button variant="danger" v-on:click="stop">Stop</b-button>
+                </b-jumbotron>
+            </b-container>
+            <b-container>
+                    <div id="events">
+                                <b-card title="831e1650-001e-001b-66ab-eeb76e069631" v-b-toggle.collapse_card1 >
+                                    <b-collapse id=collapse_card1 class="mt-2">
+                                        <pre><code class="hljs">{
+    "topic": "/subscriptions/{subscription-id}/resourceGroups/Storage/providers/Microsoft.Storage/storageAccounts/xstoretestaccount",
+    "subject": "/blobServices/default/containers/testcontainer/blobs/testfile.txt",
+    "eventType": "Microsoft.Storage.BlobCreated",
+    "eventTime": "2017-06-26T18:41:00.9584103Z",
+    "id": "831e1650-001e-001b-66ab-eeb76e069631",
+    "data": {
+        "api": "PutBlockList",
+        "clientRequestId": "6d79dbfb-0e37-4fc4-981f-442c9ca65760",
+        "requestId": "831e1650-001e-001b-66ab-eeb76e000000",
+        "eTag": "0x8D4BCC2E4835CD0",
+        "contentType": "text/plain",
+        "contentLength": 524288,
+        "blobType": "BlockBlob",
+        "url": "https://example.blob.core.windows.net/testcontainer/testfile.txt",
+        "sequencer": "00000000000004420000000000028963",
+        "storageDiagnostics": {
+        "batchId": "b68529f3-68cd-4744-baa4-3c0498ec19f0"
+        }
+    },
+    "dataVersion": "",
+    "metadataVersion": "1"
+}</code></pre>
+                                    </b-collapse>
+                                </b-card>
+                                <b-card title="602a88ef-0001-00e6-1233-1646070610ea" v-b-toggle.collapse_card2 >
+                                        <b-collapse id=collapse_card2 class="mt-2">
+                                            <pre><code class="hljs">{
+    "subject": "Contoso/foo/bar/items",
+    "eventType": "Microsoft.EventGrid.CustomEventType",
+    "eventTime": "2017-08-16T01:57:26.005121Z",
+    "id": "602a88ef-0001-00e6-1233-1646070610ea",
+    "data": { 
+            "id": "831e1650-001e-001b-66ab-eeb76e069631",
+            "message": "Contoso item Foo",
+            "time": "2017-06-26T18:41:00.9584103Z"
+            },
+    "dataVersion": "",
+    "metadataVersion": "1"
+    }</code></pre>
+                                        </b-collapse>
+                                    </b-card>
+                    </div>
+            </b-container>
+            <b-container>
+                        <event-item 
+                            v-for="item in eventList"
+                            v-bind:event="item"
+                            v-bind:key="item.id">
+                        </event-item>
+            </b-container>
+        </div>
+        <script>
+            window.app = new Vue({
+                el: "#app",
+                data: {
+                    connectionstring: 'connectionstring',
+                    queue: 'queue',
+                    eventList: [ ],
+                },
+                methods: {
+                    start: function() {startEventListener();},
+                    stop: function() {stopEventListener();}
+                }
+            })
+
+            Vue.component('event-item', {
+                props: ['event'],
+                template: `
+                <b-card :title=event.id v-b-toggle.collapse_card >
+                    <b-collapse id="collapse_card" class="mt-2">
+                        <pre><code class="hljs">{{ event }}</code></pre>
+                    </b-collapse>
+                </b-card>
+                `
+            })
+/*
+            var events = new Vue({
+                el: '#events',
+                data: {
+                    eventList: [ ]
+                }
+            })
+*/
+
+            var currentBackoff = 0;
+            var maximumBackoff = 10;
+            var stopListening = false;
+            var queueService;
+            var encoder = new AzureStorage.Queue.QueueMessageEncoder.TextBase64QueueMessageEncoder();
+            var timer;
+
+            function startEventListener() {
+                queueService = AzureStorage.Queue.createQueueService(app.connectionstring);
+                getEvents();
+            }
+
+            function stopEventListener() {
+                stopListening = true;
+            }
+
+            function getEvents() {
+                if (stopListening != true) {
+                    queueService.getMessages(app.queue, {numOfMessages:32},function(error, messages, response) {
+                        if(!error){
+                            if (messages.length>0) {
+                                // Reset backoff
+                                currentBackoff = 0;
+
+                                for (message in messages) {
+                                    app.eventList.push(messages[message].messageText);
+                                    queueService.deleteMessage(app.queue, messages[message].messageId, messages[message].popReceipt, function(error, response) {
+                                        if (!error) {
+                                            //message deleted
+                                        }
+                                    });
+                                }
+                            } else {
+                                if (currentBackoff < maximumBackoff)
+                                {
+                                    currentBackoff++;
+                                }
+                            }
+                            timer = setTimeout(getEvents,currentBackoff*1000);
+                        }
+                    });
+                    stopListening = false;
+                }
+            }
+
+
+
+        </script>
+    </body>
+</html>
